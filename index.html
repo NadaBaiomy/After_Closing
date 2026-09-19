@@ -2,16 +2,16 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بعد الأذان - النسخة المرعبة</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Asylum: Run & Hide</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap');
 
         body {
             margin: 0;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Amiri', serif; /* خط عربي تقليدي */
+            font-family: 'Courier Prime', monospace;
             user-select: none;
         }
 
@@ -24,71 +24,64 @@
             z-index: 1;
         }
 
-        /* تأثير الحبيبات (Film Grain) للرعب */
-        #grain {
+        /* --- تأثيرات الرعب (Outlast Style) --- */
+        
+        /* 1. ضوضاء الكاميرا */
+        #static-noise {
             position: absolute;
             top: -50%;
             left: -50%;
             width: 200%;
             height: 200%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADsEZWCAAAAGFBMVEUAAAA5OTkAAABERERmZmYzMzMyMjJQUFBgj+ukAAAACHRSTlMAMwAqzMzMzM7U0B4AAABKSURBVDjLY2AYBaNg2AJGJiBpC2QZUqIDqGMwKgKVAqUBkI1YsoTYrxgwIzNBZCphxQ7QxIw5BMiZhFC/ApGDJCKjUgqBiG0A8oI4kWQG4xL0A0yBlAOH3x9/kAAB4wD8UjBxEQAAAABJRU5ErkJggg=='); 
             pointer-events: none;
             z-index: 5;
-            animation: grainAnim 0.5s steps(5) infinite;
+            opacity: 0.15;
+            animation: noiseAnim 0.1s steps(5) infinite;
         }
 
-        @keyframes grainAnim {
-            0%, 100% { transform: translate(0, 0); }
-            10% { transform: translate(-5%, -10%); }
-            20% { transform: translate(-15%, 5%); }
-            30% { transform: translate(7%, -25%); }
-            40% { transform: translate(-5%, 25%); }
-            50% { transform: translate(-15%, 10%); }
-            60% { transform: translate(15%, 0%); }
-            70% { transform: translate(0%, 15%); }
-            80% { transform: translate(3%, 35%); }
-            90% { transform: translate(-10%, 10%); }
+        @keyframes noiseAnim {
+            0% { transform: translate(0, 0); }
+            10% { transform: translate(-5%, -5%); }
+            20% { transform: translate(-10%, 5%); }
+            30% { transform: translate(5%, -10%); }
+            40% { transform: translate(-5%, 15%); }
+            50% { transform: translate(-10%, 5%); }
+            60% { transform: translate(15%, 0); }
+            70% { transform: translate(0, 10%); }
+            80% { transform: translate(-15%, 0); }
+            90% { transform: translate(10%, 5%); }
+            100% { transform: translate(5%, 0); }
         }
 
-        /* شاشة التحميل والمقدمة */
-        #intro-screen {
+        /* 2. الرؤية الليلية */
+        body.night-vision-active {
+            filter: sepia(100%) hue-rotate(90deg) contrast(1.2) brightness(1.2);
+        }
+        
+        /* 3. الدم والظلال */
+        #vignette {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #000;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #fff;
-            transition: opacity 2s;
+            background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.95) 100%);
+            z-index: 4;
+            pointer-events: none;
         }
         
-        .fade-text {
-            font-size: 1.5rem;
-            margin: 20px;
+        #blood-splatter {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 80% 80%, rgba(50,0,0,0.4), transparent 50%);
+            z-index: 3;
+            pointer-events: none;
             opacity: 0;
-            text-align: center;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+            transition: opacity 0.2s;
         }
 
-        #start-btn {
-            background: transparent;
-            border: 1px solid #fff;
-            color: #fff;
-            padding: 10px 30px;
-            font-family: 'Cairo', sans-serif;
-            font-size: 1.2rem;
-            cursor: pointer;
-            margin-top: 50px;
-            transition: 0.3s;
-        }
-        #start-btn:hover { background: #fff; color: #000; }
-
-        /* HUD */
+        /* واجهة المستخدم */
         #ui-layer {
             position: absolute;
             top: 0;
@@ -96,92 +89,95 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            display: none;
             z-index: 10;
+            display: none;
         }
 
-        #battery-container {
+        .rec-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ff0000;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rec-dot {
+            width: 15px;
+            height: 15px;
+            background: red;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .objective {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.8);
+            font-size: 1.5rem;
+            text-align: center;
+            text-shadow: 0 0 5px #000;
+            animation: fadeObj 4s forwards;
+        }
+        @keyframes fadeObj { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+        .battery-hud {
             position: absolute;
             top: 20px;
             right: 20px;
-            font-family: 'Cairo', sans-serif;
+            color: #fff;
+            font-size: 1.2rem;
         }
-        #battery-bar {
-            width: 100px;
-            height: 5px;
-            background: #333;
-            margin-top: 5px;
-        }
-        #battery-level {
-            height: 100%;
-            background: #fff;
-            width: 100%;
-        }
+        .bar-bg { width: 150px; height: 10px; background: #333; margin-top: 5px; }
+        .bar-fill { height: 100%; background: #ddd; width: 100%; transition: 0.2s; }
+        .bar-fill.low { background: red; }
 
-        #noise-meter {
+        .stamina-hud {
             position: absolute;
             bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 150px;
-            height: 4px;
-            background: #222;
-        }
-        #noise-fill {
-            height: 100%;
-            width: 0%;
-            background: #ff0000;
+            left: 20px;
+            color: #fff;
         }
 
-        /* تأثير الأذان المرعب */
-        #adhan-overlay {
+        .controls-hint {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 50;
-            display: none;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.8rem;
+            text-align: right;
+        }
+
+        /* شاشات المقدمة والنهاية */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            flex-direction: column;
+            color: #fff;
+            text-align: center;
         }
-        .adhan-text {
-            color: #d32f2f;
-            font-size: 4rem;
-            font-weight: bold;
-            animation: pulseText 3s infinite;
-        }
-        @keyframes pulseText {
-            0% { opacity: 0.5; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.05); text-shadow: 0 0 20px red; }
-            100% { opacity: 0.5; transform: scale(1); }
-        }
+        
+        .title { font-size: 4rem; color: #800000; text-shadow: 0 0 20px #500; margin-bottom: 20px; letter-spacing: 5px; font-family: 'Courier Prime'; }
+        .btn { padding: 15px 40px; font-size: 1.5rem; background: transparent; border: 2px solid #fff; color: #fff; cursor: pointer; margin-top: 30px; transition: 0.3s; font-family: 'Courier Prime'; }
+        .btn:hover { background: #fff; color: #000; }
 
-        /* تأثير الدم */
-        #blood-fx {
+        /* تأثير الصدمة (Jumpscare) */
+        #jumpscare-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, transparent 60%, rgba(50,0,0,0.8) 100%);
-            opacity: 0;
-            transition: opacity 0.5s;
-            pointer-events: none;
-        }
-
-        /* تلميح التفاعل */
-        #interaction-hint {
-            position: absolute;
-            top: 60%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: rgba(255,255,255,0.7);
-            font-family: 'Cairo', sans-serif;
-            font-size: 0.9rem;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: red;
+            z-index: 200;
             display: none;
+            pointer-events: none;
         }
 
     </style>
@@ -189,325 +185,373 @@
 <body>
 
     <div id="game-container"></div>
-    <div id="grain"></div>
-    <div id="blood-fx"></div>
-
-    <!-- شاشة المقدمة -->
-    <div id="intro-screen">
-        <div id="loading-text" style="color: #555;">جاري تحميل البيئة...</div>
-        <button id="start-btn" style="display:none;">استيقظ</button>
-    </div>
-
-    <!-- شاشة الأذان -->
-    <div id="adhan-overlay">
-        <div class="adhan-text">الله أكبر</div>
-        <div style="color: #fff; margin-top: 20px; font-family: 'Cairo';">03:17 ص</div>
-    </div>
+    <div id="static-noise"></div>
+    <div id="vignette"></div>
+    <div id="blood-splatter"></div>
+    <div id="jumpscare-overlay"></div>
 
     <!-- واجهة اللعب -->
     <div id="ui-layer">
-        <div id="battery-container">
-            <div style="font-size: 12px; color: #aaa;">كشاف اليد</div>
-            <div id="battery-bar"><div id="battery-level"></div></div>
+        <div class="rec-indicator"><div class="rec-dot"></div> REC ●</div>
+        <div class="battery-hud">
+            CAM BATTERY<br>
+            <div class="bar-bg"><div class="bar-fill" id="batt"></div></div>
         </div>
-        <div id="noise-meter"><div id="noise-fill"></div></div>
-        <div id="interaction-hint">اضغط E للفتح</div>
+        <div class="stamina-hud">
+            STAMINA<br>
+            <div class="bar-bg" style="width:100px"><div class="bar-fill" id="stam"></div></div>
+        </div>
+        <div class="controls-hint">
+            W,A,S,D : Move<br>
+            SHIFT : Run<br>
+            F : Flashlight<br>
+            N : Night Vision<br>
+            E : Interact
+        </div>
     </div>
 
-    <!-- مكتبة Three.js -->
+    <!-- شاشة البداية -->
+    <div id="start-screen" class="overlay">
+        <div class="title">MOUNT MASSIVE</div>
+        <p style="color: #aaa; max-width: 500px; line-height: 1.6;">
+            You are an investigative journalist. Something went wrong in Block C.<br>
+            Find the Security Key. Don't let <b>IT</b> catch you.
+        </p>
+        <button class="btn" onclick="startGame()">ENTER ASYLUM</button>
+    </div>
+
+    <!-- شاشة الفوز/الموت -->
+    <div id="end-screen" class="overlay" style="display: none;">
+        <h1 id="end-title" style="font-size: 3rem; color: red;">YOU DIED</h1>
+        <p id="end-desc">The patient caught you.</p>
+        <button class="btn" onclick="location.reload()">TRY AGAIN</button>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- إعدادات الصوت (Audio Synthesis) ---
+        // --- Sound Engine (Synthesizer for Horror) ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        function playHorrorSound(type) {
+        function playSound(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
 
-            if (type === 'heartbeat') {
-                osc.type = 'sine';
-                osc.frequency.value = 60;
-                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
-                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+            if (type === 'chase') {
+                // موسيقى المطاردة السريعة (Drone bass)
+                osc.type = 'sawtooth';
+                osc.frequency.value = 50;
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.5);
+                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 1);
+            } else if (type === 'breath') {
+                // أنين الوحش
+                osc.type = 'triangle';
+                osc.frequency.value = 80;
+                gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 1);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 3);
+            } else if (type === 'scream') {
+                // صرخة عند الاستيقاظ
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+                gain.gain.value = 0.5;
+                osc.start();
+                osc.stop(audioCtx.currentTime + 1.5);
+            } else if (type === 'footstep') {
+                // خطوة ثقيلة
+                osc.type = 'square';
+                osc.frequency.value = 40;
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.1);
-            } else if (type === 'flicker') {
-                osc.type = 'sawtooth';
-                osc.frequency.value = 100 + Math.random() * 50;
-                gainNode.gain.value = 0.05;
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.05);
-            } else if (type === 'drone') {
-                // صوت الخلفية المستمر
-                osc.type = 'sine';
-                osc.frequency.value = 40;
-                gainNode.gain.value = 0.02;
-                osc.start();
-                // لا تتوقف، نحتاجها مستمرة لكن الخادم الصوتي قد يحصرها
-                setTimeout(() => { gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2); osc.stop(audioCtx.currentTime + 2); }, 0);
             }
         }
 
-        // --- إعدادات اللعبة ---
+        // --- Game Setup ---
         let scene, camera, renderer;
-        let flashlight, flashlightOn = true;
+        let player, monster;
+        let flashlight, nightVisionOn = false;
         let battery = 100;
-        let isGameActive = false;
+        let stamina = 100;
+        let isGameRunning = false;
         let isGameOver = false;
-        let zombie, door;
-        
-        // الحركة
+
+        // Inputs
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let isRunning = false;
         let velocity = new THREE.Vector3();
         let direction = new THREE.Vector3();
         let prevTime = performance.now();
         let euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
-        // المؤثرات
-        let noiseLevel = 0;
-        let fearLevel = 0;
-        let zombieSpeed = 0.03;
+        // Game Objects
+        let keyObject, doorObject;
+        let keyCollected = false;
+        let monsterChasing = false;
 
         function init() {
-            // المشهد
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x020202);
-            scene.fog = new THREE.FogExp2(0x000000, 0.12); // ضباب كثيف جداً
+            scene.fog = new THREE.FogExp2(0x000000, 0.15);
 
-            // الكاميرا
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
 
-            // الريندر
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.getElementById('game-container').appendChild(renderer.domElement);
 
-            // الإضاءة
-            const ambient = new THREE.AmbientLight(0x111111);
-            scene.add(ambient);
+            // Lighting
+            const amb = new THREE.AmbientLight(0x111111);
+            scene.add(amb);
 
-            // الكشاف
-            flashlight = new THREE.SpotLight(0xffffee, 2, 25, Math.PI/6, 0.5, 1);
+            flashlight = new THREE.SpotLight(0xffffff, 1.5, 20, Math.PI/5, 0.5, 1);
             flashlight.castShadow = true;
-            flashlight.position.set(0,0,0);
-            flashlight.target.position.set(0,0,-1);
+            flashlight.position.set(0.5, -0.5, 0);
             camera.add(flashlight);
             camera.add(flashlight.target);
             scene.add(camera);
 
-            buildRoom();
-            buildZombie();
+            buildAsylum();
+            buildMonster();
             
             // Events
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('keydown', (e) => handleKey(e.code, true));
+            document.addEventListener('keyup', (e) => handleKey(e.code, false));
             document.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('resize', onWindowResize);
-            
-            // Start Intro Sequence
-            startIntroSequence();
+            window.addEventListener('resize', onResize);
 
             animate();
         }
 
-        function buildRoom() {
-            const texLoader = new THREE.TextureLoader();
-            // نستخدم ألوان بسيطة لضمان عدم ظهور مشاكل في الصور
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.9 });
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+        function buildAsylum() {
+            // Materials
+            const tileMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.2 }); // Clean tiles
+            const dirtyMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 }); // Dark walls
+            const bloodMat = new THREE.MeshStandardMaterial({ color: 0x550000 });
 
-            // أرضية
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), floorMat);
+            // Floor (Tiles)
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 60), tileMat);
             floor.rotation.x = -Math.PI/2;
             floor.receiveShadow = true;
             scene.add(floor);
 
-            // جدران (ممر طويل)
+            // Ceiling
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(10, 60), tileMat);
+            ceil.rotation.x = Math.PI/2;
+            ceil.position.y = 3;
+            scene.add(ceil);
+
+            // Walls
             const createWall = (x, y, z, w, h, ry) => {
-                const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.5), wallMat);
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.5), dirtyMat);
                 wall.position.set(x, y, z);
                 wall.rotation.y = ry;
-                wall.castShadow = true;
                 wall.receiveShadow = true;
                 scene.add(wall);
             };
-
-            createWall(0, 2, -10, 20, 4, 0); // خلف
-            createWall(-10, 2, 0, 20, 4, Math.PI/2); // يسار
-            createWall(10, 2, 0, 20, 4, Math.PI/2); // يمين
+            createWall(5.25, 1.5, 0, 60, 3, Math.PI/2); // Left
+            createWall(-5.25, 1.5, 0, 60, 3, Math.PI/2); // Right
+            createWall(0, 1.5, -30, 10, 3, 0); // Back
             
-            // باب
-            door = new THREE.Mesh(new THREE.BoxGeometry(3, 3.5, 0.2), new THREE.MeshStandardMaterial({color: 0x221111}));
-            door.position.set(0, 1.75, -9.7);
-            door.castShadow = true;
-            door.userData = { isOpen: false };
-            scene.add(door);
+            // Exit Door
+            doorObject = new THREE.Mesh(new THREE.BoxGeometry(3, 3.5, 0.2), new THREE.MeshStandardMaterial({color: 0x222}));
+            doorObject.position.set(0, 1.75, 29.8);
+            doorObject.userData = { locked: true, open: false };
+            scene.add(doorObject);
 
-            // تفاصيل (خزائن، أسرّة)
-            for(let i=-5; i<5; i+=2.5) {
-                const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), wallMat);
-                cabinet.position.set(i, 1, 9.5);
-                cabinet.castShadow = true;
-                scene.add(cabinet);
+            // The Key
+            const keyGeo = new THREE.TorusKnotGeometry(0.1, 0.03, 64, 8);
+            const keyMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+            keyObject = new THREE.Mesh(keyGeo, keyMat);
+            keyObject.position.set(2, 1, -10); // Placed far back
+            scene.add(keyObject);
+
+            // Blood Stains (Decor)
+            for(let i=0; i<5; i++) {
+                const blood = new THREE.Mesh(new THREE.CircleGeometry(Math.random()+0.5, 16), bloodMat);
+                blood.rotation.x = -Math.PI/2;
+                blood.position.set((Math.random()-0.5)*8, 0.01, (Math.random()*50)-25);
+                scene.add(blood);
             }
         }
 
-        function buildZombie() {
-            zombie = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a }); // أسود حالك
+        function buildMonster() {
+            monster = new THREE.Group();
             
-            // جسم
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.8, 0.4), mat);
+            // Skin color (Raw meat)
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0x880000, roughness: 0.6 });
+
+            // Body (Hunched)
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.5), skinMat);
             body.position.y = 1.5;
-            zombie.add(body);
+            body.rotation.x = 0.5; // Hunch forward
+            monster.add(body);
+
+            // Head
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.4), skinMat);
+            head.position.set(0, 2.3, 0.3);
+            monster.add(head);
+
+            // Long Arms (Dragging)
+            const armGeo = new THREE.BoxGeometry(0.2, 1.2, 0.2);
+            const armL = new THREE.Mesh(armGeo, skinMat);
+            armL.position.set(-0.6, 1.2, 0.8);
+            armL.rotation.x = -1.5;
+            monster.add(armL);
             
-            // رأس
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.5), mat);
-            head.position.y = 2.8;
-            zombie.add(head);
+            const armR = new THREE.Mesh(armGeo, skinMat);
+            armR.position.set(0.6, 1.2, 0.8);
+            armR.rotation.x = -1.5;
+            monster.add(armR);
 
-            // عيون حمراء
-            const eyeGeo = new THREE.SphereGeometry(0.06);
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const e1 = new THREE.Mesh(eyeGeo, eyeMat); e1.position.set(-0.15, 2.85, 0.26);
-            const e2 = new THREE.Mesh(eyeGeo, eyeMat); e2.position.set(0.15, 2.85, 0.26);
-            zombie.add(e1); zombie.add(e2);
+            // Legs (Stiff)
+            const legGeo = new THREE.BoxGeometry(0.3, 1.5, 0.3);
+            const legL = new THREE.Mesh(legGeo, skinMat);
+            legL.position.set(-0.3, 0.2, -0.5);
+            monster.add(legL);
+            const legR = new THREE.Mesh(legGeo, skinMat);
+            legR.position.set(0.3, 0.2, -0.5);
+            monster.add(legR);
 
-            zombie.position.set(0, 0, 8); // في نهاية الممر
-            zombie.castShadow = true;
-            scene.add(zombie);
-        }
-
-        // --- منطق المقدمة ---
-        function startIntroSequence() {
-            const btn = document.getElementById('start-btn');
-            const load = document.getElementById('loading-text');
-            
-            setTimeout(() => {
-                load.style.display = 'none';
-                btn.style.display = 'block';
-            }, 1000);
-
-            btn.onclick = () => {
-                document.getElementById('intro-screen').style.opacity = 0;
-                setTimeout(() => {
-                    document.getElementById('intro-screen').style.display = 'none';
-                    playAdhan();
-                }, 2000);
-                
-                // تشغيل الصوت
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-            };
-        }
-
-        function playAdhan() {
-            const adhanDiv = document.getElementById('adhan-overlay');
-            adhanDiv.style.display = 'flex';
-            
-            // صوت مفزع بسيط
-            playHorrorSound('drone');
-
-            setTimeout(() => {
-                adhanDiv.style.display = 'none';
-                startGame();
-            }, 5000);
+            monster.position.set(0, 0, 25); // Waiting at the end
+            monster.visible = false; // Hidden initially
+            scene.add(monster);
         }
 
         function startGame() {
-            isGameActive = true;
+            document.getElementById('start-screen').style.display = 'none';
             document.getElementById('ui-layer').style.display = 'block';
+            isGameRunning = true;
             document.body.requestPointerLock();
             
-            // تشغيل نبضات القلب المتكررة
-            setInterval(() => {
-                if (!isGameOver && isGameActive) {
-                    playHorrorSound('heartbeat');
-                    // زيادة الخوف
-                    if (fearLevel > 0) fearLevel += 1;
-                }
-            }, 1000);
+            // Intro Objective
+            const obj = document.createElement('div');
+            obj.className = 'objective';
+            obj.innerHTML = "OBJECTIVE:<br>Find the Security Key";
+            document.getElementById('ui-layer').appendChild(obj);
+
+            // Ambient Sound
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            playSound('breath');
         }
 
-        // --- التحكم ---
-        function onKeyDown(e) {
-            if (!isGameActive) return;
-            switch(e.code) {
-                case 'KeyW': moveForward = true; break;
-                case 'KeyS': moveBackward = true; break;
-                case 'KeyA': moveLeft = true; break;
-                case 'KeyD': moveRight = true; break;
-                case 'KeyF': toggleFlashlight(); break;
-                case 'KeyE': interact(); break;
-            }
-        }
-
-        function onKeyUp(e) {
-            switch(e.code) {
-                case 'KeyW': moveForward = false; break;
-                case 'KeyS': moveBackward = false; break;
-                case 'KeyA': moveLeft = false; break;
-                case 'KeyD': moveRight = false; break;
+        function handleKey(code, isDown) {
+            if (!isGameRunning) return;
+            switch (code) {
+                case 'KeyW': case 'ArrowUp': moveForward = isDown; break;
+                case 'KeyS': case 'ArrowDown': moveBackward = isDown; break;
+                case 'KeyA': case 'ArrowLeft': moveLeft = isDown; break;
+                case 'KeyD': case 'ArrowRight': moveRight = isDown; break;
+                case 'ShiftLeft': isRunning = isDown; break;
+                case 'KeyF': 
+                    if (isDown) { 
+                        flashlightOn = !flashlightOn; 
+                        flashlight.intensity = flashlightOn ? 1.5 : 0;
+                    }
+                    break;
+                case 'KeyN':
+                    if (isDown) {
+                        nightVisionOn = !nightVisionOn;
+                        document.body.classList.toggle('night-vision-active');
+                        if (nightVisionOn) flashlight.intensity = 0.5; // Night vision needs some light but less than normal
+                        else flashlight.intensity = flashlightOn ? 1.5 : 0;
+                    }
+                    break;
+                case 'KeyE':
+                    if (isDown) interact();
+                    break;
             }
         }
 
         function onMouseMove(e) {
-            if (!isGameActive) return;
-            const movementX = e.movementX || e.mozMovementX || e.webkitMovementX || 0;
-            const movementY = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
-
+            if (!isGameRunning) return;
             euler.setFromQuaternion(camera.quaternion);
-            euler.y -= movementX * 0.002;
-            euler.x -= movementY * 0.002;
+            euler.y -= e.movementX * 0.002;
+            euler.x -= e.movementY * 0.002;
             euler.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.x));
             camera.quaternion.setFromEuler(euler);
         }
 
-        function toggleFlashlight() {
-            if (battery > 0) {
-                flashlightOn = !flashlightOn;
-                flashlight.intensity = flashlightOn ? 2 : 0;
-            }
-        }
-
-        function interact() {
-            const ray = new THREE.Raycaster();
-            ray.setFromCamera(new THREE.Vector2(0,0), camera);
-            const hits = ray.intersectObject(door);
-            if (hits.length > 0 && hits[0].distance < 4) {
-                if (!door.userData.isOpen) {
-                    door.userData.isOpen = true;
-                    door.rotation.y = Math.PI/2;
-                    noiseLevel = 100; // فتح الباب صوت عالي
-                    document.getElementById('interaction-hint').style.display = 'none';
-                }
-            }
-        }
-
-        function onWindowResize() {
+        function onResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- الحلقة الرئيسية ---
+        function interact() {
+            // Collect Key
+            if (!keyCollected) {
+                const dist = camera.position.distanceTo(keyObject.position);
+                if (dist < 3) {
+                    keyCollected = true;
+                    scene.remove(keyObject);
+                    // Trigger Monster
+                    monster.visible = true;
+                    monsterChasing = true;
+                    playSound('scream');
+                    
+                    // UI Update
+                    const obj = document.querySelector('.objective');
+                    obj.innerHTML = "OBJECTIVE:<br>GET TO THE EXIT DOOR!";
+                    obj.style.animation = 'none'; obj.offsetHeight; obj.style.animation = null; // reset anim
+                    
+                    // Show Battery drain warning if NV is on
+                }
+            }
+            // Open Door
+            if (keyCollected && !doorObject.userData.open) {
+                const dist = camera.position.distanceTo(doorObject.position);
+                if (dist < 4) {
+                    doorObject.userData.open = true;
+                    doorObject.rotation.y = Math.PI/2;
+                    endGame(true);
+                }
+            }
+        }
+
+        function endGame(win) {
+            isGameRunning = false;
+            document.exitPointerLock();
+            const screen = document.getElementById('end-screen');
+            screen.style.display = 'flex';
+            if (win) {
+                document.getElementById('end-title').innerText = "ESCAPED";
+                document.getElementById('end-title').style.color = "green";
+                document.getElementById('end-desc').innerText = "You made it out alive... this time.";
+            } else {
+                document.getElementById('end-title').innerText = "KILLED";
+                document.getElementById('end-desc').innerText = "The patient claimed another soul.";
+            }
+        }
+
+        function gameOver() {
+            // Jumpscare effect
+            const js = document.getElementById('jumpscare-overlay');
+            js.style.display = 'block';
+            playSound('scream');
+            setTimeout(() => endGame(false), 1000);
+        }
+
+        // --- Main Loop ---
         function animate() {
             requestAnimationFrame(animate);
-
-            if (!isGameActive) return;
+            if (!isGameRunning) return;
 
             const time = performance.now();
             const delta = (time - prevTime) / 1000;
             prevTime = time;
 
-            // حركة اللاعب
+            // Movement Physics
             velocity.x -= velocity.x * 10.0 * delta;
             velocity.z -= velocity.z * 10.0 * delta;
 
@@ -515,80 +559,89 @@
             direction.x = Number(moveRight) - Number(moveLeft);
             direction.normalize();
 
-            if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
-            if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+            let speed = isRunning && stamina > 0 ? 12.0 : 5.0;
+            
+            // Stamina Logic
+            if (isRunning && (moveForward || moveBackward || moveLeft || moveRight)) {
+                stamina -= 20 * delta;
+            } else {
+                stamina = Math.min(100, stamina + 10 * delta);
+            }
+            document.getElementById('stam').style.width = stamina + '%';
+
+            if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
 
             camera.translateX(velocity.x * delta);
             camera.translateZ(velocity.z * delta);
-            camera.position.y = 1.7; // تثبيت الارتفاع
+            camera.position.y = 1.7; // Lock height
 
-            // حدود
-            if (camera.position.z > 9.5) camera.position.z = 9.5;
-            if (camera.position.z < -9.5) camera.position.z = -9.5;
-            if (camera.position.x > 9) camera.position.x = 9;
-            if (camera.position.x < -9) camera.position.x = -9;
+            // Bounds (Corridor)
+            if (camera.position.x > 4) camera.position.x = 4;
+            if (camera.position.x < -4) camera.position.x = -4;
+            if (camera.position.z > 28) camera.position.z = 28;
+            if (camera.position.z < -28) camera.position.z = -28;
 
-            // --- ميكانيك الرعب ---
-            
-            // 1. الكشاف يرفرف عشوائياً
-            if (flashlightOn && Math.random() < 0.02) {
-                flashlight.intensity = Math.random() * 2;
-                if (Math.random() < 0.1) playHorrorSound('flicker');
+            // Camera Sway (Breathing/Running)
+            if (moveForward || moveBackward || moveLeft || moveRight) {
+                const swaySpeed = isRunning ? 15 : 8;
+                const swayAmt = isRunning ? 0.05 : 0.02;
+                camera.position.y = 1.7 + Math.sin(time * 0.001 * swaySpeed) * swayAmt;
             }
 
-            // 2. البطارية
-            if (flashlightOn) {
-                battery -= 0.5 * delta;
-                document.getElementById('battery-level').style.width = battery + '%';
-                if (battery < 20) document.getElementById('battery-level').style.background = 'red';
-                if (battery <= 0) { battery = 0; flashlight.intensity = 0; flashlightOn = false; }
-            }
+            // --- Mechanics ---
 
-            // 3. الزومبي AI
-            const dist = zombie.position.distanceTo(camera.position);
-            
-            // حركة الزومبي (تنفس/اهتزاز)
-            zombie.position.y = Math.sin(time * 0.003) * 0.05;
-
-            // السمع
-            let currentNoise = 0;
-            if (moveForward || moveBackward || moveLeft || moveRight) currentNoise = 0.5;
-            
-            noiseLevel = Math.max(0, noiseLevel - 10 * delta);
-            noiseLevel += currentNoise * 10;
-            document.getElementById('noise-fill').style.width = noiseLevel + '%';
-
-            // المطاردة
-            if (dist < 8 && (noiseLevel > 50 || flashlightOn)) {
-                zombie.lookAt(camera.position.x, zombie.position.y, camera.position.z);
-                zombie.translateZ(zombieSpeed);
-                fearLevel += 5 * delta;
-                
-                // قرب
-                if (dist < 3) {
-                    document.getElementById('blood-fx').style.opacity = 1;
-                    if (dist < 1.0) {
-                        isGameOver = true;
-                        document.body.style.background = 'red';
-                        alert("لقد انتهى الأمر...");
-                        location.reload();
-                    }
-                } else {
-                    document.getElementById('blood-fx').style.opacity = (3 - dist) / 3;
+            // Battery
+            if (nightVisionOn) {
+                battery -= 5 * delta; // Night vision drains fast
+                document.getElementById('batt').style.width = battery + '%';
+                if (battery < 20) document.getElementById('batt').classList.add('low');
+                if (battery <= 0) {
+                    battery = 0;
+                    nightVisionOn = false;
+                    document.body.classList.remove('night-vision-active');
+                    flashlight.intensity = 0;
                 }
-            } else {
-                document.getElementById('blood-fx').style.opacity = 0;
-                fearLevel = Math.max(0, fearLevel - 1 * delta);
+            } else if (flashlightOn) {
+                battery -= 0.5 * delta;
+                document.getElementById('batt').style.width = battery + '%';
             }
 
-            // التحقق من الباب للتفاعل
-            const ray = new THREE.Raycaster();
-            ray.setFromCamera(new THREE.Vector2(0,0), camera);
-            const hits = ray.intersectObject(door);
-            if (hits.length > 0 && hits[0].distance < 4 && !door.userData.isOpen) {
-                document.getElementById('interaction-hint').style.display = 'block';
+            // Key Animation
+            if (!keyCollected) {
+                keyObject.rotation.y += delta;
+                keyObject.position.y = 1 + Math.sin(time * 0.003) * 0.1;
+            }
+
+            // --- Monster AI ---
+            if (monsterChasing) {
+                // Chase Music Loop
+                if (Math.floor(time) % 60 === 0) playSound('chase');
+
+                const dist = monster.position.distanceTo(camera.position);
+                
+                // Look at player
+                monster.lookAt(camera.position.x, monster.position.y, camera.position.z);
+                
+                // Move
+                let chaseSpeed = 6.5; // Fast runner
+                monster.translateZ(chaseSpeed * delta);
+
+                // Animation (Wild flailing)
+                monster.rotation.x = Math.sin(time * 0.02) * 0.5;
+
+                // Catch Player
+                if (dist < 1.5) {
+                    gameOver();
+                }
+
+                // Visual Fear Effect
+                document.getElementById('blood-splatter').style.opacity = Math.max(0, (10 - dist) / 10);
+                camera.fov = 75 + (10-dist)*2; // Zoom in when close
+                camera.updateProjectionMatrix();
             } else {
-                document.getElementById('interaction-hint').style.display = 'none';
+                camera.fov = 75; // Reset FOV
+                camera.updateProjectionMatrix();
             }
 
             renderer.render(scene, camera);
