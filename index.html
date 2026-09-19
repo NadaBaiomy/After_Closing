@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>بعد الأذان </title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Cairo', sans-serif;
+            color: #eee;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* منع التكبير والسحب للصفحة */
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* واجهة المستخدم (HUD) */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 2;
+        }
+
+        /* أزرار التحكم للموبايل */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            pointer-events: auto;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        /* عصا التحكم (D-Pad) */
+        .d-pad {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+        
+        .d-btn {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 20px;
+            user-select: none;
+            touch-action: none;
+        }
+        .d-btn:active { background: rgba(255, 0, 0, 0.5); }
+        
+        .btn-up { top: 0; left: 50%; transform: translateX(-50%); }
+        .btn-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+        .btn-left { top: 50%; left: 0; transform: translateY(-50%); }
+        .btn-right { top: 50%; right: 0; transform: translateY(-50%); }
+
+        /* أزرار الأكشن */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid white;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            touch-action: none;
+        }
+        .action-btn:active { background: rgba(255, 255, 255, 0.3); }
+
+        /* بقية الواجهة */
+        #noise-meter {
+            position: absolute;
+            bottom: 220px; /* فوق الأزرار */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+        #noise-level {
+            height: 100%;
+            width: 0%;
+            background: #ff3333;
+            border-radius: 5px;
+            transition: width 0.1s;
+        }
+
+        #battery-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .battery-icon {
+            width: 30px;
+            height: 15px;
+            border: 2px solid #fff;
+            padding: 2px;
+            display: inline-block;
+            position: relative;
+        }
+        .battery-icon::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 2px;
+            width: 2px;
+            height: 7px;
+            background: #fff;
+        }
+        #battery-fill {
+            height: 100%;
+            width: 100%;
+            background: #fff;
+            transition: width 0.5s, background-color 0.5s;
+        }
+
+        #vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.8) 100%);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        #blood-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 60%, rgba(139,0,0,0.4) 90%);
+            opacity: 0;
+            transition: opacity 1s;
+            pointer-events: none;
+        }
+
+        /* الموبايل داخل اللعبة */
+        #mobile-phone {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 280px;
+            height: 500px;
+            background: #111;
+            border: 8px solid #333;
+            border-radius: 20px;
+            pointer-events: auto;
+            transition: transform 0.3s;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        #phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            box-sizing: border-box;
+            font-size: 14px;
+            overflow-y: auto;
+        }
+        .close-phone-btn {
+            margin-top: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* الشاشات */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 { font-size: 2.5rem; color: #d32f2f; text-shadow: 0 0 10px #d32f2f; margin-bottom: 0; }
+        p { font-size: 1.2rem; color: #ccc; line-height: 1.6; }
+        .btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        #adhan-text {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            color: #fff;
+            text-shadow: 0 0 10px #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 50;
+            text-align: center;
+            width: 80%;
+        }
+        
+        #interaction-msg {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            color: #fff;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 15px;
+            border-radius: 5px;
+            opacity: 0;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container"></div>
+
+    <div id="ui-layer">
+        <div id="vignette"></div>
+        <div id="blood-overlay"></div>
+        
+        <div id="battery-container">
+            <div style="color:white; font-size:12px;">🔦</div>
+            <div class="battery-icon">
+                <div id="battery-fill"></div>
+            </div>
+        </div>
+
+        <div id="noise-meter"><div id="noise-level"></div></div>
+        <div id="interaction-msg">اضغط للتفاعل</div>
+
+        <!-- أزرار التحكم للموبايل -->
+        <div id="mobile-controls" style="display:none;">
+            <div class="d-pad">
+                <div class="d-btn btn-up" id="btn-up">▲</div>
+                <div class="d-btn btn-down" id="btn-down">▼</div>
+                <div class="d-btn btn-left" id="btn-left">◀</div>
+                <div class="d-btn btn-right" id="btn-right">▶</div>
+            </div>
+            <div class="action-buttons">
+                <div class="action-btn" id="btn-action">E</div>
+                <div class="action-btn" id="btn-flash">F</div>
+                <div class="action-btn" id="btn-phone" style="background:#222;">MSG</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الموبايل داخل اللعبة -->
+    <div id="mobile-phone">
+        <div id="phone-screen">
+            <h3 style="text-align:center; color:#fff; border-bottom:1px solid #333; padding-bottom:10px;">الرسائل</h3>
+            <div class="msg">
+                <strong>رقم مجهول</strong><br>
+                لو سمعت صوت الأذان... متخرجش.
+                <span class="msg-time">03:15 ص</span>
+            </div>
+            <button class="close-phone-btn" onclick="togglePhone()">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- شاشة البداية -->
+    <div id="start-screen" class="overlay-screen">
+        <h1>بعد الأذان</h1>
+        <p>نسخة الموبايل</p>
+        <p>استخدم العصا اليسرى للمشي واسحب الشاشة للنظر.</p>
+        <button class="btn" onclick="startGame()">ابدأ</button>
+    </div>
+
+    <div id="game-over-screen" class="overlay-screen" style="display: none;">
+        <h1>الموت</h1>
+        <p id="death-reason">لقد سمعك شيء ما...</p>
+        <button class="btn" onclick="location.reload()">إعادة</button>
+    </div>
+
+    <div id="adhan-text">الله أكبر... الله أكبر</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // إعدادات اللعبة
+        let scene, camera, renderer;
+        // متغيرات الحركة (للموبايل والكيبورد)
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let isCrouching = false;
+        let isRunning = false;
+        
+        let flashlight, flashlightOn = true;
+        let battery = 100;
+        let noiseLevel = 0;
+        let fearLevel = 0;
+        let isPhoneOpen = false;
+        let isGameOver = false;
+        let gameStarted = false;
+
+        let zombie;
+        let interactables = [];
+        let zombieSpeed = 0.04; // أبطأ قليلاً للموبايل
+        let zombieState = 'idle';
+
+        // الصوت
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let heartbeatOsc, heartbeatGain;
+
+        // عناصر DOM
+        const noiseLevelDiv = document.getElementById('noise-level');
+        const batteryFillDiv = document.getElementById('battery-fill');
+        const phoneDiv = document.getElementById('mobile-phone');
+        const bloodOverlay = document.getElementById('blood-overlay');
+        const interactionMsg = document.getElementById('interaction-msg');
+        const mobileControls = document.getElementById('mobile-controls');
+
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        
+        // متغيرات اللمس للكاميرا (Touch Look)
+        let lookTouchId = null;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        const PI_2 = Math.PI / 2;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.FogExp2(0x000000, 0.15);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            // إضاءة
+            const ambientLight = new THREE.AmbientLight(0x222222);
+            scene.add(ambientLight);
+
+            // كشاف
+            flashlight = new THREE.SpotLight(0xffffee, 1.5, 40, Math.PI/6, 0.5, 1);
+            flashlight.castShadow = true;
+            camera.add(flashlight);
+            flashlight.position.set(0, 0, 0);
+            flashlight.target.position.set(0, 0, -1);
+            camera.add(flashlight.target);
+            scene.add(camera);
+
+            buildWorld();
+            buildZombie();
+            setupMobileControls(); // إعداد أزرار الموبايل
+
+            animate();
+        }
+
+        function buildWorld() {
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
+            
+            const floorGeo = new THREE.PlaneGeometry(20, 20);
+            const floor = new THREE.Mesh(floorGeo, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            const wallGeo = new THREE.BoxGeometry(20, 4, 0.5);
+            const backWall = new THREE.Mesh(wallGeo, wallMaterial);
+            backWall.position.set(0, 2, -10);
+            scene.add(backWall);
+
+            const leftWall = new THREE.Mesh(wallGeo, wallMaterial);
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.position.set(-10, 2, 0);
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(wallGeo, wallMaterial);
+            rightWall.rotation.y = -Math.PI / 2;
+            rightWall.position.set(10, 2, 0);
+            scene.add(rightWall);
+
+            const frontWallLeft = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 0.5), wallMaterial);
+            frontWallLeft.position.set(-6, 2, 10);
+            scene.add(frontWallLeft);
+            const frontWallRight = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 0.5), wallMaterial);
+            frontWallRight.position.set(6, 2, 10);
+            scene.add(frontWallRight);
+            const frontWallTop = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 0.5), wallMaterial);
+            frontWallTop.position.set(0, 3.25, 10);
+            scene.add(frontWallTop);
+
+            const doorGeo = new THREE.BoxGeometry(3.8, 2.4, 0.2);
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0x4a3c31 });
+            const door = new THREE.Mesh(doorGeo, doorMat);
+            door.position.set(0, 1.2, 9.8);
+            door.userData = { type: 'door', isOpen: false, id: 'main_door' };
+            door.castShadow = true;
+            scene.add(door);
+            interactables.push(door);
+
+            // سرير
+            const bedBase = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 4), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+            bedBase.position.set(-5, 0.25, -5);
+            scene.add(bedBase);
+            
+            const pillow = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 0.5), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            pillow.position.set(-5, 0.6, -5);
+            scene.add(pillow);
+
+            // طاولة
+            const table = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 1.5), new THREE.MeshStandardMaterial({color: 0x3e2723}));
+            table.position.set(4, 0.5, -5);
+            scene.add(table);
+        }
+
+        function buildZombie() {
+            zombie = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0x554433 });
+
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.4), mat);
+            body.position.y = 1.5;
+            zombie.add(body);
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skinMat);
+            head.position.y = 2.5;
+            zombie.add(head);
+
+            const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.15, 2.55, 0.26);
+            zombie.add(leftEye);
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.15, 2.55, 0.26);
+            zombie.add(rightEye);
+
+            const armGeo = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+            const leftArm = new THREE.Mesh(armGeo, mat);
+            leftArm.position.set(-0.6, 2, 0.5);
+            zombie.add(leftArm);
+            const rightArm = new THREE.Mesh(armGeo, mat);
+            rightArm.position.set(0.6, 2, 0.5);
+            zombie.add(rightArm);
+
+            zombie.position.set(8, 0, 8);
+            zombie.castShadow = true;
+            scene.add(zombie);
+        }
+
+        // --- إعداد أزرار الموبايل ---
+        function setupMobileControls() {
+            const addTouch = (id, startAction, endAction) => {
+                const el = document.getElementById(id);
+                el.addEventListener('touchstart', (e) => { e.preventDefault(); startAction(); });
+                el.addEventListener('touchend', (e) => { e.preventDefault(); endAction(); });
+            };
+
+            addTouch('btn-up', () => moveForward = true, () => moveForward = false);
+            addTouch('btn-down', () => moveBackward = true, () => moveBackward = false);
+            addTouch('btn-left', () => moveLeft = true, () => moveLeft = false);
+            addTouch('btn-right', () => moveRight = true, () => moveRight = false);
+            
+            document.getElementById('btn-action').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                interact();
+            });
+            
+            document.getElementById('btn-flash').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                toggleFlashlight();
+            });
+
+            document.getElementById('btn-phone').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                togglePhone();
+            });
+
+            // تحريك الكاميرا بالسحب (Touch Drag)
+            const container = document.getElementById('game-container');
+            
+            container.addEventListener('touchstart', (e) => {
+                if(isPhoneOpen || isGameOver) return;
+                // لمس واحد فقط للنظر (الثاني للأزرار)
+                if (e.touches.length === 1 && !e.target.classList.contains('d-btn') && !e.target.classList.contains('action-btn')) {
+                    lookTouchId = e.touches[0].identifier;
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                }
+            }, {passive: false});
+
+            container.addEventListener('touchmove', (e) => {
+                if(isPhoneOpen || isGameOver) return;
+                e.preventDefault(); // منع التمرير
+                
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === lookTouchId) {
+                        const touchX = e.changedTouches[i].clientX;
+                        const touchY = e.changedTouches[i].clientY;
+                        
+                        const deltaX = touchX - lastTouchX;
+                        const deltaY = touchY - lastTouchY;
+                        
+                        // تحديث زاوية الكاميرا
+                        euler.setFromQuaternion(camera.quaternion);
+                        euler.y -= deltaX * 0.005;
+                        euler.x -= deltaY * 0.005;
+                        euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
+                        camera.quaternion.setFromEuler(euler);
+
+                        lastTouchX = touchX;
+                        lastTouchY = touchY;
+                    }
+                }
+            }, {passive: false});
+
+            container.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === lookTouchId) {
+                        lookTouchId = null;
+                    }
+                }
+            });
+            
+            // دعم لوحة المفاتيح (في حال اللعب على كمبيوتر)
+            document.addEventListener('keydown', (e) => handleKey(e.code, true));
+            document.addEventListener('keyup', (e) => handleKey(e.code, false));
+        }
+
+        function handleKey(code, isDown) {
+            if (isGameOver) return;
+            switch (code) {
+                case 'KeyW': case 'ArrowUp': moveForward = isDown; break;
+                case 'KeyS': case 'ArrowDown': moveBackward = isDown; break;
+                case 'KeyA': case 'ArrowLeft': moveLeft = isDown; break;
+                case 'KeyD': case 'ArrowRight': moveRight = isDown; break;
+                case 'KeyF': if(isDown) toggleFlashlight(); break;
+                case 'KeyM': if(isDown) togglePhone(); break;
+                case 'KeyE': if(isDown) interact(); break;
+            }
+        }
+
+        function toggleFlashlight() {
+            if (battery > 0) {
+                flashlightOn = !flashlightOn;
+                flashlight.intensity = flashlightOn ? 1.5 : 0;
+            }
+        }
+
+        function togglePhone() {
+            isPhoneOpen = !isPhoneOpen;
+            if (isPhoneOpen) {
+                phoneDiv.style.transform = "translate(-50%, -50%) scale(1)";
+                mobileControls.style.display = 'none';
+            } else {
+                phoneDiv.style.transform = "translate(-50%, -50%) scale(0)";
+                mobileControls.style.display = 'flex';
+            }
+        }
+
+        function interact() {
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+            const intersects = raycaster.intersectObjects(interactables);
+            if (intersects.length > 0) {
+                const obj = intersects[0].object;
+                if (obj.userData.type === 'door' && !obj.userData.isOpen) {
+                    obj.userData.isOpen = true;
+                    let rot = 0;
+                    const interval = setInterval(() => {
+                        rot += 0.05;
+                        obj.rotation.y = rot;
+                        obj.position.x = 1.5;
+                        if (rot >= Math.PI/2) clearInterval(interval);
+                    }, 16);
+                    increaseNoise(60);
+                    interactionMsg.style.opacity = 0;
+                }
+            }
+        }
+
+        function increaseNoise(amount) {
+            noiseLevel += amount;
+            if (noiseLevel > 100) noiseLevel = 100;
+        }
+
+        function updateZombieAI() {
+            const dist = zombie.position.distanceTo(camera.position);
+            const door = interactables.find(i => i.userData.id === 'main_door');
+            const doorOpen = door && door.userData.isOpen;
+
+            if (noiseLevel > 30 || (dist < 15 && flashlightOn)) {
+                zombieState = 'chase';
+            }
+
+            if (zombieState === 'chase') {
+                if (!doorOpen && dist > 4) {
+                    zombie.lookAt(door.position);
+                    zombie.translateZ(zombieSpeed);
+                    if (zombie.position.distanceTo(door.position) < 2) {
+                        if (Math.random() < 0.05) {
+                            camera.position.x += (Math.random() - 0.5) * 0.1;
+                        }
+                    }
+                } else if (doorOpen || dist <= 4) {
+                    zombie.lookAt(camera.position.x, zombie.position.y, camera.position.z);
+                    zombie.translateZ(zombieSpeed);
+                }
+
+                if (dist < 5) {
+                    fearLevel += 0.1;
+                    if (heartbeatOsc) heartbeatOsc.frequency.rampToValueAtTime(180, audioCtx.currentTime + 0.5);
+                } else {
+                    if (heartbeatOsc) heartbeatOsc.frequency.rampToValueAtValue(60, audioCtx.currentTime + 1);
+                }
+
+                if (dist < 1.5) gameOver("تم القبض عليك...");
+            }
+        }
+
+        function startHeartbeat() {
+            heartbeatOsc = audioCtx.createOscillator();
+            heartbeatGain = audioCtx.createGain();
+            heartbeatOsc.type = 'triangle';
+            heartbeatOsc.frequency.value = 60;
+            heartbeatGain.gain.value = 0.1;
+            heartbeatOsc.connect(heartbeatGain);
+            heartbeatGain.connect(audioCtx.destination);
+            heartbeatOsc.start();
+            setInterval(() => {
+                if (!isGameOver) {
+                    const now = audioCtx.currentTime;
+                    heartbeatGain.gain.setValueAtTime(0.1, now);
+                    heartbeatGain.gain.linearRampToValueAtTime(0, now + 0.1);
+                    heartbeatGain.gain.setValueAtTime(0.1, now + 0.3);
+                    heartbeatGain.gain.linearRampToValueAtTime(0, now + 0.4);
+                }
+            }, 1000);
+        }
+
+        function gameOver(reason) {
+            isGameOver = true;
+            document.getElementById('game-over-screen').style.display = 'flex';
+            document.getElementById('death-reason').innerText = reason;
+            mobileControls.style.display = 'none';
+            if (heartbeatOsc) heartbeatOsc.stop();
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'block';
+            mobileControls.style.display = 'flex';
+            gameStarted = true;
+            
+            startHeartbeat();
+
+            const adhanText = document.getElementById('adhan-text');
+            adhanText.style.opacity = 1;
+            setTimeout(() => { adhanText.style.opacity = 0; }, 4000);
+
+            // AudioContext resume for mobile
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isGameOver || !gameStarted) return;
+
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+            prevTime = time;
+
+            // Physics & Movement
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+            
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            let currentNoise = 0;
+            if (moveForward || moveBackward || moveLeft || moveRight) {
+                velocity.z += direction.z * 100.0 * delta;
+                velocity.x += direction.x * 100.0 * delta;
+                currentNoise = 0.3;
+            }
+
+            // Apply Move
+            if (!isPhoneOpen) {
+                camera.translateX(velocity.x * delta);
+                camera.translateZ(velocity.z * delta);
+                
+                // Bounds
+                if (camera.position.x > 9) camera.position.x = 9;
+                if (camera.position.x < -9) camera.position.x = -9;
+                if (camera.position.z > 9) camera.position.z = 9;
+                if (camera.position.z < -9) camera.position.z = -9;
+                
+                // Height Lock
+                camera.position.y = 1.7;
+            }
+
+            // Noise
+            noiseLevel = Math.max(0, noiseLevel - 20 * delta);
+            noiseLevel += currentNoise * 10;
+            if (noiseLevel > 100) noiseLevel = 100;
+            noiseLevelDiv.style.width = noiseLevel + '%';
+            noiseLevelDiv.style.backgroundColor = noiseLevel > 70 ? '#ff0000' : (noiseLevel > 40 ? '#ffff00' : '#00ff00');
+
+            // Battery
+            if (flashlightOn && battery > 0) {
+                battery -= 1.5 * delta;
+                batteryFillDiv.style.width = battery + '%';
+                if (battery < 30) batteryFillDiv.style.backgroundColor = 'red';
+                if (battery <= 0) {
+                    battery = 0; flashlightOn = false; flashlight.intensity = 0;
+                }
+            }
+
+            // Fear
+            if (fearLevel > 0) fearLevel -= 2 * delta;
+            bloodOverlay.style.opacity = Math.min(1, fearLevel / 100);
+
+            updateZombieAI();
+            renderer.render(scene, camera);
+        }
+
+        let prevTime = performance.now();
+        init();
+
+    </script>
+</body>
+</html>
