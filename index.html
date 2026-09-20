@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>بعد الإغلاق</title>
+<title>بعد الإغلاق — نسخة الواقع</title>
 <link href="https://fonts.googleapis.com/css2?family=Rakkas&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
@@ -42,9 +42,9 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--bone);-webkit-use
 #recHud .battseg i.off{background:#222;border-color:#444}
 #crosshair{position:absolute;top:50%;left:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:rgba(230,225,210,.6);z-index:9;pointer-events:none;display:none;box-shadow:0 0 4px #000}
 #fade{position:absolute;inset:0;background:#000;pointer-events:none;opacity:1;transition:opacity 1.1s;z-index:20}
-#loading{position:absolute;inset:0;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:110;gap:16px}
+#loading{position:absolute;inset:0;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:110;gap:16px;padding:0 24px;text-align:center}
 #loading.on{display:flex}
-#loading .lt{color:#8b857a;font-size:15px;letter-spacing:1px}
+#loading .lt{color:#8b857a;font-size:15px;letter-spacing:1px;line-height:2}
 #loading .ldbar{width:220px;height:4px;background:#1a1a1e;border-radius:3px;overflow:hidden}
 #loading .ldbar i{display:block;height:100%;width:40%;background:var(--amber);border-radius:3px;animation:ld 1.1s infinite}
 @keyframes ld{0%{transform:translateX(220px)}100%{transform:translateX(-220px)}}
@@ -147,7 +147,7 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--bone);-webkit-use
 <div id="camFx"></div><div id="hideFx"></div><div id="crosshair"></div><div id="fade"></div>
 <div id="recHud"><span class="rec">● REC</span><div class="battseg"><i></i><i></i><i></i><i></i></div></div>
 <div id="chapter"><div id="chTitle"></div><div id="chSub"></div></div>
-<div id="loading"><div class="lt">جاري تحميل مجسمات الشخصيات الحقيقية…</div><div class="ldbar"><i></i></div></div>
+<div id="loading"><div class="lt">جاري تحميل الممثلين الواقعيين وحركاتهم المسجلة…<br>(مرة واحدة بس — بعد كده هيفضلوا محفوظين)</div><div class="ldbar"><i></i></div></div>
 <div id="lockHint">اضغط بالماوس مرة على الشاشة عشان تتحكم بالنظر</div>
 
 <div id="hud">
@@ -419,6 +419,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,coarseNow?1.25:1.5));
 renderer.setSize(innerWidth,innerHeight,false);
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;
 const scene=new THREE.Scene();
 scene.fog=new THREE.FogExp2(0x02030a,0.055);
 scene.background=new THREE.Color(0x02030a);
@@ -477,74 +478,130 @@ function makeItemMesh(it){const g=new THREE.Group();
  default:add(box(.15,.15,.15,0x8f8a76,0,0,0))}
  g.traverse(m=>{if(m.material&&m.material.emissive){m.material=m.material.clone();m.material.emissive=new THREE.Color(0x15150e)}});
  return g}
-/* ============ تحميل مجسم الإنسان الحقيقي ============ */
-const CHARS={ready:false,loading:false,proto:null,clips:null,tried:0};
+/* ================================================================
+   الشخصيات الواقعية: مجسم فوتوغرافي (Ready Player Me) + حركات
+   مشي/جري مسجلة بتصوير حركي، بتتنقل على الهيكل بإعادة توجيه العظام
+   ================================================================ */
+const CHARS={ready:false,loading:false,proto:null,clips:null,tag:'none'};
+const KIRA_URLS=[
+ 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/kira.glb',
+ 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r152/examples/models/gltf/kira.glb',
+ 'https://rawcdn.githack.com/mrdoob/three.js/r160/examples/models/gltf/kira.glb',
+ 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/kira.glb'];
+const MICHELLE_URLS=[
+ 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/models/gltf/Michelle.glb',
+ 'https://threejs.org/examples/models/gltf/Michelle.glb'];
 const SOLDIER_URLS=[
  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb',
  'https://threejs.org/examples/models/gltf/Soldier.glb',
  'https://rawcdn.githack.com/mrdoob/three.js/r128/examples/models/gltf/Soldier.glb'];
+function stripRig(n){return String(n).replace(/^mixamorig[:_]?/,'')}
+function loadFirst(loader,urls,onOk,onFail){let i=0;const go=()=>{if(i>=urls.length){onFail();return}loader.load(urls[i++],onOk,undefined,()=>go())};go()}
+function findClipByName(clips,names){for(let n=0;n<names.length;n++)for(let i=0;i<clips.length;i++)if(clips[i].name===names[n])return clips[i];return null}
+function buildClipsDirect(clips){
+ if(!clips||!clips.length)return null;
+ const out={};
+ out.idle=findClipByName(clips,['Idle','idle']);
+ out.walk=findClipByName(clips,['Walk','walk']);
+ out.run=findClipByName(clips,['Run','run']);
+ if(!out.run&&out.walk)out.run=out.walk;
+ return(out.idle&&out.walk)?out:null}
+/* نقل حركة إنسان حقيقي من هيكل لهيكل المجسم الفوتوغرافي (retargeting) */
+function retargetClips(targetRoot,srcClips){
+ const bones=new Set();
+ targetRoot.traverse(o=>{if(o.isBone)bones.add(stripRig(o.name))});
+ const pick={idle:findClipByName(srcClips,['Idle','idle']),walk:findClipByName(srcClips,['Walk','walk']),run:findClipByName(srcClips,['Run','run'])};
+ const out={};
+ for(const k in pick){const c=pick[k];if(!c)continue;
+  const tracks=[];
+  for(let i=0;i<c.tracks.length;i++){const t=c.tracks[i];
+   const dot=t.name.indexOf('.');if(dot<0)continue;
+   const bn=stripRig(t.name.slice(0,dot));const prop=t.name.slice(dot+1);
+   if(bones.has(bn)){
+    const Ctor=t.constructor;
+    tracks.push(new Ctor(bn+'.'+prop,t.times.slice(0),t.values.slice(0)))}}
+  if(tracks.length>4)out[k]=new THREE.AnimationClip(k+'_rt',c.duration,tracks)}
+ if(!out.run&&out.walk)out.run=out.walk;
+ return(out.idle&&out.walk)?out:null}
+function facesPosZ(root){
+ let L=null,R=null;root.updateMatrixWorld(true);
+ const v=new THREE.Vector3();
+ root.traverse(o=>{if(o.isBone){if(!L&&/Left(UpLeg|Leg)/i.test(stripRig(o.name)))L=o;if(!R&&/Right(UpLeg|Leg)/i.test(stripRig(o.name)))R=o}});
+ if(!L||!R)return true;
+ L.getWorldPosition(v);const lx=v.x;R.getWorldPosition(v);
+ return lx>v.x}
+function normalizeProto(g){
+ const box=new THREE.Box3().setFromObject(g);
+ const h=box.max.y-box.min.y;
+ if(h>.4){const s=1.78/h;if(Math.abs(s-1)>.04)g.scale.setScalar(s)}
+ if(!facesPosZ(g))g.rotation.y=Math.PI}
+function setupProto(g,clips,tag){normalizeProto(g);CHARS.proto=g;CHARS.clips=clips;CHARS.tag=tag;CHARS.ready=true}
 function loadCharacters(cb){
  if(CHARS.ready||CHARS.loading){if(cb)cb();return}
- if(typeof THREE.GLTFLoader!=='function'||!THREE.SkeletonUtils){if(cb)cb();return}
+ if(typeof THREE.GLTFLoader!=='function'){if(cb)cb();return}
  CHARS.loading=true;
  const loader=new THREE.GLTFLoader();
- const tryNext=function(){
-  if(CHARS.tried>=SOLDIER_URLS.length){CHARS.loading=false;if(cb)cb();return}
-  const url=SOLDIER_URLS[CHARS.tried++];
-  loader.load(url,function(g){
+ const finish=()=>{CHARS.loading=false;if(cb)cb()};
+ /* المصدر الأول: حركات إنسان حقيقي + موديل بديل */
+ loadFirst(loader,SOLDIER_URLS,sg=>{
+  const sClips=sg.animations||[];
+  const direct=buildClipsDirect(sClips);
+  /* المصدر الفوتوغرافي: بني آدم حقيقي */
+  loadFirst(loader,KIRA_URLS.concat(MICHELLE_URLS),pg=>{
+   let ok=false;
    try{
-    const model=g.scene;
-    model.traverse(function(o){if(o.isMesh){o.castShadow=true;o.frustumCulled=false}});
-    const clips=g.animations||[];
-    const find=function(n){for(let i=0;i<clips.length;i++)if(clips[i].name===n)return clips[i];return null};
-    CHARS.clips={
-     idle:find('Idle')||clips[0]||null,
-     walk:find('Walk')||clips[1]||clips[0]||null,
-     run:find('Run')||clips[2]||find('Walk')||clips[0]||null};
-    CHARS.proto=model;CHARS.ready=true;CHARS.loading=false;
-   }catch(e){}
-   if(cb)cb();
-  },undefined,function(){tryNext()});
- };
- tryNext()}
+    const own=buildClipsDirect(pg.animations);
+    const clips=own||retargetClips(pg.scene,sClips);
+    if(clips&&pg.scene){setupProto(pg.scene,clips,'real');ok=true}}catch(e){}
+   if(!ok&&direct)setupProto(sg.scene,direct,'alt');
+   finish()},
+  ()=>{if(direct)setupProto(sg.scene,direct,'alt');finish()})},
+ ()=>finish())}
+/* نسخة احتياطية لو مكتبة النسخ مش موجودة */
+function cloneSkinned(root){
+ if(THREE.SkeletonUtils&&THREE.SkeletonUtils.clone)return THREE.SkeletonUtils.clone(root);
+ const clone=root.clone(true);
+ const dst=[];clone.traverse(o=>{if(o.isSkinnedMesh)dst.push(o)});
+ const src=[];root.traverse(o=>{if(o.isSkinnedMesh)src.push(o)});
+ for(let i=0;i<dst.length;i++){const sm=src[i],dm=dst[i];
+  const nb=sm.skeleton.bones.map(b=>{let f=null;clone.traverse(o=>{if(o.isBone&&o.name===b.name&&!f)f=o});return f||b});
+  dm.skeleton=new THREE.Skeleton(nb,sm.skeleton.boneInverses)}
+ return clone}
 function freezeChar(c){const u=c.userData;if(u&&u.mixer){u.mixer.timeScale=0;u.mixer.update(rnd(.2,2.5))}}
-const INF_TINTS=[0x9fb18c,0x9aa88a,0xa8b092,0x8fae8f];
+const INF_TINTS=[0x9fb18c,0x94a28b,0xa8b092,0x8ba98c,0x9cc0a0];
 function makeCharacter(kind){
  if(!CHARS.ready)return makePrimitiveHuman(kind);
- const obj=THREE.SkeletonUtils.clone(CHARS.proto);
- let tint=0xffffff,scl=1,sil=false,eyeCol=null;
- if(kind==='infected'){tint=INF_TINTS[Math.floor(rnd(0,INF_TINTS.length))];eyeCol=0xff2a2a}
- else if(kind==='brute'){tint=0xa85848;scl=1.42;eyeCol=0xff2222}
- else if(kind==='guard'){tint=0xd8cfc0}
- else if(kind==='guardTurned'){tint=0x9fae90;eyeCol=0xff2a2a}
- else if(kind==='watcher'){sil=true;eyeCol=0xe8e8e8;scl=.85}
- else if(kind==='origin'){sil=true;eyeCol=0xd22b2b;scl=1.08}
- else if(kind==='corpse'){tint=0x8a9880}
- else if(kind==='halluc'){sil=true}
- if(scl!==1)obj.scale.set(scl,scl*1.05,scl);
- obj.traverse(function(o){
-  if(o.isMesh){
-   o.castShadow=!sil;o.frustumCulled=false;
-   if(sil)o.material=new THREE.MeshBasicMaterial({color:0x060608,fog:false});
-   else{o.material=o.material.clone();o.material.color=new THREE.Color(tint)}
-  }});
+ const obj=cloneSkinned(CHARS.proto);
+ let tint=0xffffff,extraScl=1,sil=false;
+ if(kind==='infected')tint=INF_TINTS[Math.floor(rnd(0,INF_TINTS.length))];
+ else if(kind==='brute'){tint=0xa85848;extraScl=1.38}
+ else if(kind==='guard')tint=0xd6cec2;
+ else if(kind==='guardTurned')tint=0x9fb18c;
+ else if(kind==='watcher'){sil=true;extraScl=.9}
+ else if(kind==='origin'){sil=true;extraScl=1.05}
+ else if(kind==='corpse')tint=0x8a9880;
+ else if(kind==='halluc')sil=true;
+ if(extraScl!==1)obj.scale.multiplyScalar(extraScl);
+ obj.traverse(o=>{if(o.isMesh){
+  o.castShadow=!sil;o.frustumCulled=false;
+  if(sil){const bm=()=>new THREE.MeshBasicMaterial({color:0x060608,fog:false,skinning:true});
+   o.material=Array.isArray(o.material)?o.material.map(bm):bm()}
+  else{const fix=m=>{const c=m.clone();c.color=new THREE.Color(tint);
+    if(c.isMeshStandardMaterial){c.metalness=0;c.roughness=.92}
+    if('skinning'in c)c.skinning=true;return c};
+   o.material=Array.isArray(o.material)?o.material.map(fix):fix(o.material)}}});
  let headB=null;
- obj.traverse(function(o){if(o.isBone&&!headB&&/head/i.test(o.name))headB=o});
- if(eyeCol&&headB){
-  const em=new THREE.MeshBasicMaterial({color:eyeCol,fog:false});
-  const e1=new THREE.Mesh(new THREE.SphereGeometry(.02,6,6),em);
-  const e2=e1.clone();
-  e1.position.set(-.036,.1,.075);e2.position.set(.036,.1,.075);
-  headB.add(e1);headB.add(e2)}
- const mixer=new THREE.AnimationMixer(obj);
+ obj.traverse(o=>{if(o.isBone&&!headB&&stripRig(o.name)==='Head')headB=o});
+ const mixer=CHARS.clips?new THREE.AnimationMixer(obj):null;
  const acts={};
- if(CHARS.clips.idle)acts.idle=mixer.clipAction(CHARS.clips.idle);
- if(CHARS.clips.walk)acts.walk=mixer.clipAction(CHARS.clips.walk);
- if(CHARS.clips.run)acts.run=mixer.clipAction(CHARS.clips.run);
- if(acts.idle)acts.idle.play();
- obj.userData={mixer:mixer,acts:acts,cur:'idle',headB:headB,phase:rnd(6),real:true};
+ if(mixer){const C=CHARS.clips;
+  if(C.idle)acts.idle=mixer.clipAction(C.idle);
+  if(C.walk)acts.walk=mixer.clipAction(C.walk);
+  if(C.run)acts.run=mixer.clipAction(C.run);
+  if(acts.idle)acts.idle.play()}
+ obj.userData={mixer:mixer,acts:acts,cur:acts.idle?'idle':'',headB:headB,phase:rnd(6),real:true};
  return obj}
-/* ============ مجسم بديل (لو النت فشل) ============ */
+/* ============ النسخة الاحتياطية (بدون نت خالص) ============ */
 const SKINMATS={};
 function makeSkinMat(o){
  const key=(o.base||'')+'|'+(o.veins?1:0)+(o.blood?1:0)+(o.rot?1:0)+(o.tears?1:0);
@@ -788,16 +845,26 @@ function roomAt(x,z){const tx=x/TILE,ty=z/TILE;const R=ROOMS[world.id];
 /* ============ الوحوش ============ */
 function mkEnt(o){return Object.assign({x:0,z:0,r:.42,dir:0,hp:60,dead:false,deadT:0,state:'idle',spd:3.2,chaseSpd:6.8,
  path:null,pi:0,repath:0,lastSeen:null,searchT:0,stepT:0,vendetta:null,doorT:0,kind:'infected',atkT:0,seesPlayer:false,
- burnT:0,grT:rnd(4,10),animSpd:0,lungeT:0,twitch:0,stumbleT:0,ghost:false,_wts:rnd(.55,.68),_rts:1},o)}
+ burnT:0,grT:rnd(4,10),animSpd:0,lungeT:0,twitch:0,stumbleT:0,ghost:false,_wts:rnd(.5,.68),_rts:1},o)}
 function makeEntMesh(e){
- if(e.kind==='brute'){e._rts=.78;return makeCharacter('brute')}
+ if(e.kind==='brute'){e._rts=.8;e._wts=.62;return makeCharacter('brute')}
  if(e.kind==='watcher')return makeCharacter('watcher');
  if(e.kind==='origin')return makeCharacter('origin');
- if(e.kind==='guard'){
-  if(flags.guardTurned)return makeCharacter('guardTurned');
-  return makeCharacter('guard')}
- e._rts=rnd(.95,1.1);
+ if(e.kind==='guard'){e._wts=.95;e._rts=1;return makeCharacter(flags.guardTurned?'guardTurned':'guard')}
+ e._rts=rnd(.95,1.12);e._wts=rnd(.5,.68);
  return makeCharacter('infected')}
+function addEyes(e,col){
+ if(e.eyeL||!e.mesh||!e.mesh.userData.headB)return;
+ const m=new THREE.MeshBasicMaterial({color:col||0xff2a2a,toneMapped:false});
+ const geo=new THREE.SphereGeometry(.018,6,6);
+ e.eyeL=new THREE.Mesh(geo,m);e.eyeR=new THREE.Mesh(geo,m.clone());
+ worldGroup.add(e.eyeL);worldGroup.add(e.eyeR)}
+function attachMesh(e,eyeCol){
+ e.mesh=makeEntMesh(e);
+ worldGroup.add(e.mesh);
+ e.mesh.position.set(e.x,0,e.z);
+ addEyes(e,eyeCol);
+ if(e.ghost){e.mesh.visible=false;if(e.eyeL){e.eyeL.visible=e.eyeR.visible=false}}}
 function spawnEntities(id){
  if(id==='basement')ents.push(mkEnt({kind:'infected',x:27*TILE,z:5*TILE,hp:60,dormant:true}));
  if(id==='ground'){
@@ -816,14 +883,13 @@ function spawnEntities(id){
   ents.push(mkEnt({kind:'infected',x:15*TILE,z:24*TILE,hp:60}));
   ents.push(mkEnt({kind:'infected',x:44*TILE,z:9*TILE,hp:70}));
   ents.push(mkEnt({kind:'infected',x:20*TILE,z:15.5*TILE,hp:60,weeping:true}))}
- for(const e of ents){e.mesh=makeEntMesh(e);worldGroup.add(e.mesh);e.mesh.position.set(e.x,0,e.z);
-  if(e.ghost)e.mesh.visible=false}}
+ for(const e of ents)attachMesh(e,e.kind==='watcher'?0xe8e8e8:(e.kind==='origin'?0xd22b2b:0xff2a2a))}
 function spawnBrute(){if(ents.some(e=>e.kind==='brute'))return;
  const b=mkEnt({kind:'brute',x:22*TILE,z:10*TILE,r:.7,hp:9999,spd:2.6,chaseSpd:5.4});
- b.mesh=makeEntMesh(b);worldGroup.add(b.mesh);b.mesh.position.set(b.x,0,b.z);ents.push(b)}
+ attachMesh(b,0xff2222);ents.push(b)}
 function turnGuard(e){flags.guardTurned=true;
- worldGroup.remove(e.mesh);e.mesh=makeEntMesh(e);worldGroup.add(e.mesh);
- e.mesh.position.set(e.x,0,e.z)}
+ worldGroup.remove(e.mesh);if(e.eyeL){worldGroup.remove(e.eyeL);worldGroup.remove(e.eyeR);e.eyeL=e.eyeR=null}
+ attachMesh(e,0xff2a2a)}
 function astar(sx,sy,tx,ty,cap){const W=world.w,H=world.h;
  const key=(x,y)=>y*W+x;const open=[[sx,sy]];const g=new Map([[key(sx,sy),0]]);const came=new Map();
  const Fs=new Map([[key(sx,sy),Math.abs(tx-sx)+Math.abs(ty-sy)]]);let it=0;
@@ -955,6 +1021,8 @@ function aiWatcher(e,dt,sees){
   moveAlong(e,dt,2.4);
   if(e.learned&&player.hidden===e.learned&&dist(e.x,e.z,player.x,player.z)<2){revealHide();hurtPlayer(20,e)}
   if(e.searchT<=0)e.state='still'}}
+const TV1=new THREE.Vector3(),TV2=new THREE.Vector3(),TV3=new THREE.Vector3(),TV4=new THREE.Vector3();
+const TQ1=new THREE.Quaternion();
 function animateEnts(dt){
  const tt=performance.now()*.001;
  for(const e of ents){if(!e.mesh)continue;
@@ -962,7 +1030,20 @@ function animateEnts(dt){
   m.position.set(e.x,0,e.z);
   m.rotation.y=Math.atan2(Math.cos(e.dir),Math.sin(e.dir));
   if(e.ghost)m.visible=player.nv;
-  if(e.kind==='origin'&&!e.ghost)m.visible=player.nv;
+  else if(e.kind==='origin')m.visible=player.nv;
+  /* العيون المايلة بتتبع راس الممثل الحقيقي */
+  if(e.eyeL){
+   if(e.dead||!u.headB){e.eyeL.visible=false;e.eyeR.visible=false}
+   else{
+    u.headB.getWorldPosition(TV1);
+    u.headB.getWorldQuaternion(TQ1);
+    TV2.set(0,0,1).applyQuaternion(TQ1);
+    TV3.set(0,1,0).applyQuaternion(TQ1);
+    TV4.set(1,0,0).applyQuaternion(TQ1);
+    const bx=TV1.x+TV3.x*.13+TV2.x*.1,by=TV1.y+TV3.y*.13+TV2.y*.1,bz=TV1.z+TV3.z*.13+TV2.z*.1;
+    e.eyeL.position.set(bx-TV4.x*.037,by-TV4.y*.037,bz-TV4.z*.037);
+    e.eyeR.position.set(bx+TV4.x*.037,by+TV4.y*.037,bz+TV4.z*.037);
+    e.eyeL.visible=e.eyeR.visible=(e.kind!=='origin'||player.nv)}}
   if(e.dead){e.deadT+=dt;
    if(u.mixer&&!u.stopped){u.mixer.stopAllAction();u.stopped=true}
    m.rotation.x=-Math.min(1,e.deadT*2.2)*Math.PI/2;
@@ -982,17 +1063,17 @@ function animateEnts(dt){
    if(acts[st]&&u.cur!==st){
     if(acts[u.cur])acts[u.cur].fadeOut(.22);
     acts[st].reset().fadeIn(.22).play();u.cur=st}
-   u.mixer.timeScale=st==='walk'?(e._wts||.8):(st==='run'?(e._rts||1):1);
+   u.mixer.timeScale=st==='walk'?(e._wts||.7):(st==='run'?(e._rts||1):1);
    u.mixer.update(dt);
    if(u.headB){
     if(e.kind==='infected'||e.kind==='brute'||(e.kind==='guard'&&flags.guardTurned)){
      u.headB.rotation.z=.28+Math.sin(tt*2.2+u.phase)*.07;
      if(Math.random()<dt*1.2)u.headB.rotation.x=rnd(-.2,.3);
      else u.headB.rotation.x=lerp(u.headB.rotation.x,.1,dt*3)}
-    else if(e.kind==='watcher'||e.kind==='origin'){
+    else if(e.kind==='watcher'){
      u.headB.rotation.y=Math.sin(tt*.7+u.phase)*.15}
-    else{u.headB.rotation.set(0,Math.sin(tt*.5+u.phase)*.2,0)}}
-  }else if(u.legL){
+    else{u.headB.rotation.set(0,Math.sin(tt*.5+u.phase)*.2,0)}}}
+  else if(u.legL){
    u.phase+=dt*(1.4+(e.animSpd||0)*1.7);
    const sw=Math.sin(u.phase);
    const moving=(e.animSpd||0)>.1;
@@ -1167,8 +1248,9 @@ function updatePlayer(dt){if(dead)return;
  player.san=clamp(player.san+dS*dt*.85,0,100);
  if(player.san<70&&Math.random()<dt*.02)AU.whisper();
  if(player.san<40&&Math.random()<dt*.06){AU.whisper();
-  if(Math.random()<.4&&!halluc){const a=yaw+rnd(-.6,.6);
+  if(Math.random()<.4&&!halluc){
    halluc=makeCharacter('halluc');freezeChar(halluc);
+   const a=yaw+rnd(-.6,.6);
    halluc.position.set(player.x-Math.sin(a)*7,0,player.z-Math.cos(a)*7);
    halluc.rotation.y=yaw+Math.PI;worldGroup.add(halluc);
    setTimeout(()=>{if(halluc){worldGroup.remove(halluc);halluc=null}},900)}}
@@ -1402,8 +1484,8 @@ function onBreaker(i){
  if(i===6&&state.breakers[6]&&!triggersFired.has('b7')){triggersFired.add('b7');
   state.alarm=true;AU.alarmOn();subtitle('قاطع ٧... والإنذار ولع معاه. الدنية كلها هتسمع.',4000);
   setTimeout(()=>{if(world.id==='ground'){
-   const a=mkEnt({kind:'infected',x:8*TILE,z:20*TILE,hp:60});a.mesh=makeEntMesh(a);worldGroup.add(a.mesh);a.mesh.position.set(a.x,0,a.z);ents.push(a);
-   const b2=mkEnt({kind:'infected',x:58*TILE,z:20*TILE,hp:60});b2.mesh=makeEntMesh(b2);worldGroup.add(b2.mesh);b2.mesh.position.set(b2.x,0,b2.z);ents.push(b2);
+   const a=mkEnt({kind:'infected',x:8*TILE,z:20*TILE,hp:60});attachMesh(a);ents.push(a);
+   const b2=mkEnt({kind:'infected',x:58*TILE,z:20*TILE,hp:60});attachMesh(b2);ents.push(b2);
    subtitle('حاجات بتتحرك في الممرات.',3000)}},4000)}
  if(i===6&&!state.breakers[6]){state.alarm=false;AU.alarmOff()}}
 async function fridgeInteract(n){
@@ -1412,8 +1494,9 @@ async function fridgeInteract(n){
  state.sample=true;cine=true;AU.tone(200,2,'sine',.1);
  subtitle('فتحت الثلاجة رقم ٤. جوه علبة معدنية باردة... العينة.',4200);await wait(2200);
  const ox=39*TILE,oz=12*TILE;
- const orig=mkEnt({kind:'origin',x:ox,z:oz});orig.mesh=makeEntMesh(orig);
- worldGroup.add(orig.mesh);orig.mesh.position.set(ox,0,oz);orig.mesh.visible=player.nv;
+ const orig=mkEnt({kind:'origin',x:ox,z:oz});
+ attachMesh(orig,0xd22b2b);
+ orig.mesh.visible=player.nv;
  AU.tone(38,4,'sine',.22,0,0,1.5);
  subtitle('في عمق المعمل... حاجة واقفة ورا الزجاج. مش باينة بالعين — افتح الأشعة (F).',5500);await wait(3600);
  subtitle('مبيتحركش. بيبصّلك بس.',3000);await wait(2600);
@@ -1628,11 +1711,11 @@ async function storyOnMapLoad(){
  if(world.id==='third'&&!triggersFired.has('third1')){triggersFired.add('third1');
   if(stage<13)advance(13);
   subtitle('الدور التالت. سكون. ريحة كحول وصدأ ودم قديم. اللي بيكلمك على التليفون بيقول العينة هنا... وصوتك بيقول متروحش.',6000);
-  setTimeout(()=>{const o=mkEnt({kind:'origin',x:40*TILE,z:15.5*TILE});o.mesh=makeEntMesh(o);
-   worldGroup.add(o.mesh);o.mesh.position.set(o.x,0,o.z);o.mesh.rotation.y=Math.PI;o.mesh.visible=player.nv;ents.push(o);
+  setTimeout(()=>{const o=mkEnt({kind:'origin',x:40*TILE,z:15.5*TILE});
+   attachMesh(o,0xd22b2b);o.mesh.visible=player.nv;ents.push(o);
    AU.tone(36,4,'sine',.16,0,0,1.5);
    subtitle('في آخر الممر... حاجة واقفة جنب الزجاج. مش باينة من غير الأشعة (F).',5000);
-   setTimeout(()=>{worldGroup.remove(o.mesh);const i=ents.indexOf(o);if(i>=0)ents.splice(i,1);AU.noise(.4,.15,'bandpass',800)},4200)},8000)}}
+   setTimeout(()=>{worldGroup.remove(o.mesh);if(o.eyeL){worldGroup.remove(o.eyeL);worldGroup.remove(o.eyeR)}const i=ents.indexOf(o);if(i>=0)ents.splice(i,1);AU.noise(.4,.15,'bandpass',800)},4200)},8000)}}
 function storyTriggers(){const r=roomAt(player.x,player.z);
  if(world.id==='ground'&&r==='الطوارئ'&&!triggersFired.has('er')&&stage>=3&&stage<5){triggersFired.add('er');sceneTriage()}
  if(world.id==='ground'&&r==='الأمن'&&!triggersFired.has('sec')&&stage>=5&&stage<6){triggersFired.add('sec');sceneGuard()}
@@ -1876,8 +1959,11 @@ async function runIntro(){const S=$('intro');S.classList.add('on');
  buildMap('basement',5.5,20);
  toastObj();checkChapter();fadeTo(0);
  startUI();
- subtitle(CHARS.ready?(touchMode?'البدروم. شمال الشاشة = مشي، يمين = لف النظر. الأشعة = زرار «أشعة».':'البدروم. ريحة رطوبة وديزل ودم ناشف. F = الأشعة الليلية... وبتفرّغ البطارية.')
-  :'تحذير: مجسمات الواقع متحمّلتش (نت ضعيف) — بتلعب بنسخة بديلة. جرّبي تاني بنت أقوى.',6000);
+ let q='';
+ if(CHARS.tag==='real')q=' الممثلين الواقعيين اتحملوا — ليلة كده.';
+ else if(CHARS.tag==='alt')q=' (ملاحظة: النسخة الفوتوغرافية متحملتش — النت ضعيف. جرّبي تاني لاحقًا.)';
+ else q=' (مفيش نت — النسخة البديلة شغالة. افتحي بنت أقوى عشان الواقعية.)';
+ subtitle(touchMode?('البدروم. شمال الشاشة = مشي، يمين = لف النظر. الأشعة = زرار «أشعة».'+q):('البدروم. ريحة رطوبة وديزل ودم ناشف. F = الأشعة الليلية... وبتفرّغ البطارية.'+q),7000);
  setTimeout(()=>{if(stage<1){AU.tone(45,.9,'sine',.3,-.3,-20);
   subtitle('صوت القاطع الرئيسي بيفصل... المولد مات خالص. غرفة المولد على يمين الممر.',4500);advance(1)}},10000);
  setTimeout(()=>{if(!triggersFired.has('bFirst')&&world&&world.id==='basement'){triggersFired.add('bFirst');
